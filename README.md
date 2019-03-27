@@ -1,7 +1,7 @@
-Jasper-Google-Calendar
+Naomi-Google-Calendar
 ======================
 
-Jasper Google Calendar Module
+Naomi Google Calendar Module
 
 Written By: Marc Poul Joseph Laventure
 
