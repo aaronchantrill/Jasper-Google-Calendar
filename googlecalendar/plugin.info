@@ -1,0 +1,10 @@
+[Plugin]
+Name = googlecalendar
+Version = 1.0.0
+License = MIT
+URL = https://github.com/NaomiProject/Naomi
+Description = Set and retrieve events from your Google calendar
+
+[Author]
+Name = Naomi Project
+URL = https://github.com/NaomiProject/Naomi
