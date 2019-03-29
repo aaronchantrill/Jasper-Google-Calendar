@@ -1,34 +1,23 @@
 # -*- coding: utf-8 -*-
 import datetime
 import httplib2
-import sys
-import datetime
+import logging
+import os
+import pickle
 import re
-import gflags
+import sys
 
-from naomi.app_utils import get_timezone
-from dateutil import tz
-from apiclient.discovery import build
-from oauth2client.file import Storage
-from oauth2client.client import AccessTokenRefreshError
-from oauth2client.client import OAuth2WebServerFlow
-from oauth2client.tools import *
+from googleapiclient.discovery import build
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
 from naomi import app_utils
+from naomi import paths
 from naomi import plugin
 from naomi import profile
 
 
 class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
-    # Written by Marc Poul Joseph Laventure
 
-    FLAGS = gflags.FLAGS
-    WORDS = [ "Calendar", "Events", "Check", "My" ]
-    #client_id = 'xxxxxxxx.apps.googleusercontent.com'
-    #client_secret = 'xxxxxxxxxxxxxx'
-    ##api_key = 'AIzaSyDFkFhcDyTdSG_BaPMZtsQAB-xOaMPO7j0'
-    client_id = '615481663718-84jf44oa5ngs9dm8t28fiu58umuco61i.apps.googleusercontent.com'
-    client_secret = 'xuNoPl8ZYv8zwm4TiUWF6ciF'
-    
     monthDict = {'January': '01', 
             'February': '02', 
             'March': '03', 
@@ -44,23 +33,63 @@ class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
 
 
     # The scope URL for read/write access to a user's calendar data
-    scope = 'https://www.googleapis.com/auth/calendar'
+    scope = 'https://www.googleapis.com/auth/calendar.events'
+    creds = None
+    service = None
 
-    if bool(re.search('--noauth_local_webserver', str(sys.argv), re.IGNORECASE)):
-        argv = FLAGS(sys.argv[1])
+
+    def __init__(self, *args, **kwargs):
+        super(GoogleCalendarPlugin, self).__init__(*args, **kwargs)
+        self._logger = logging.getLogger(__name__)
+        # The picklefile is created when the user first authenticates.
+        picklefile = os.path.join(paths.CONFIG_PATH,"token.pickle")
+        secretsfile = os.path.join(paths.CONFIG_PATH,"credentials.json")
+        if os.path.exists(picklefile):
+            with open(picklefile, 'rb') as token:
+                self.creds = pickle.load(token)
+        # If there are no valid credentials, let the user log in
+        if not (self.creds and self.creds.valid):
+            if(self.creds and self.creds.expired and self.creds.refresh_token):
+                self.creds.refresh(Request())
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    secretsfile,
+                    self.scope
+                )
+                self.creds = flow.run_local_server()
+            with open(picklefile,'wb')as token:
+                pickle.dump(self.creds, token)
+        self.service = build('calendar', 'v3', credentials=self.creds)
 
     def get_phrases(self):
-        return [self.gettext("CALENDAR"), self.gettext("EVENTS"), self.gettext("CHECK")]
+        return [
+            self.gettext("CALENDAR"),
+            self.gettext("EVENTS"),
+            self.gettext("CHECK"),
+            self.gettext("ADD"),
+            self.gettext("TODAY"),
+            self.gettext("TOMORROW")
+        ]
 
     def addEvent(self, mic):
+        #service = build('calendar', 'v3', credentials=creds)
         while True:
             try:
-                mic.say("What would you like to add?")
-                eventData = mic.activeListen()
-                createdEvent = service.events().quickAdd(calendarId='primary', text=eventData).execute()
+                mic.say(self.gettext("What would you like to add?"))
+                eventData = mic.active_listen()
+                createdEvent = self.service.events().quickAdd(
+                    calendarId='primary',
+                    text=eventData
+                ).execute()
                 eventRawStartTime = createdEvent['start']
                 
-                m = re.search('([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})', str(eventRawStartTime))
+                m = re.search(
+                    "".join([
+                        '([0-9]{4})-([0-9]{2})-([0-9]{2})',
+                        'T([0-9]{2}):([0-9]{2}):([0-9]{2})'
+                    ]),
+                    str(eventRawStartTime)
+                )
                 eventDateYear = str(m.group(1))
                 eventDateMonth = str(m.group(2))
                 eventDateDay = str(m.group(3))
@@ -77,30 +106,56 @@ class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
                         eventTimeHour = eventTimeHour - 12
                         appendingTime = "pm"
             
-                dictKeys = [ key for key, val in monthDict.items() if val==eventDateMonth ]
+                dictKeys = [
+                    key for key, val in self.monthDict.items()
+                    if val==eventDateMonth
+                ]
                 eventDateMonth = dictKeys[0]
-                mic.say("Added event " + createdEvent['summary'] + " on " + str(eventDateMonth) + " " + str(eventDateDay) + " at " + str(eventTimeHour) + ":" + str(eventTimeMinute) + " " + appendingTime)
-                mic.say("Is this what you wanted?")
-                userResponse = mic.activeListen()
+                mic.say(" ".join([
+                    self.gettext("Added event"),
+                    createdEvent['summary'],
+                    self.gettext("on"),
+                    str(eventDateMonth),
+                    str(eventDateDay),
+                    self.gettext("at"),
+                    str(eventTimeHour) + ":" + str(eventTimeMinute),
+                    appendingTime
+                ]))
                 
-                if bool(re.search('Yes', userResponse, re.IGNORECASE)):
-                    mic.say("Okay, I added it to your calendar")
-                    return
-        
-                service.events().delete(calendarId='primary', eventId=createdEvent['id']).execute()
+                responded = False
+                while responded == False:
+                    mic.say("Is this what you wanted?")
+                    # convert the userresponse into a string
+                    userResponse = mic.active_listen()
+                    if type(userResponse) is list:
+                        userResponse = " ".join(userResponse)
+                    if app_utils.is_positive(userResponse):
+                        mic.say("Okay, I added it to your calendar")
+                        return
+                    if app_utils.is_negative(userResponse):
+                        responded = True
+                        self.service.events().delete(
+                            calendarId='primary',
+                            eventId=createdEvent['id']
+                        ).execute()
 
             except KeyError:
 
-                mic.say("Could not add event to your calender; check if internet issue.")
-                mic.say("Would you like to attempt again?")
-                responseRedo = mic.activeListen()
+                mic.say(self.gettext("Could not add event to your calendar; check if internet issue."))
+                responded = False
+                while not responded:
+                    mic.say(self.gettext("Would you like to attempt again?"))
+                    responseRedo = mic.active_listen()
 
-                if bool(re.search('No', responseRedo, re.IGNORECASE)):
-                    return
+                    if app_utils.is_negative(responseRedo):
+                        return
+                    if app_utils.is_positive(responseRedo):
+                        responded = True
 
     def getEventsToday(self, mic):
 
-        tz = getTimezone(profile.get_profile())
+        tz = app_utils.get_timezone(profile.get_profile())
+        #service = build('calendar', 'v3', credentials=creds)
 
         # Get Present Start Time and End Time in RFC3339 Format
         d = datetime.datetime.now(tz=tz)
@@ -113,9 +168,19 @@ class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
         
         while True:
 
-            # Gets events from primary calender from each page in present day boundaries
-            events = service.events().list(calendarId='primary', pageToken=page_token, timeMin=todayStartTime, timeMax=todayEndTime).execute() 
-            
+            # Gets events from primary calendar from each page in present day boundaries
+            events = self.service.events().list(
+                calendarId='primary',
+                timeMin=todayStartTime,
+                timeMax=todayEndTime,
+                singleEvents=True,
+                orderBy='startTime'
+            ).execute()
+
+            #events_result = service.events().list(calendarId='primary', timeMin=now,
+            #    maxResults=10, singleEvents=True,
+            #    orderBy='startTime').execute()
+
             if(len(events['items']) == 0):
                 mic.say("You have no events scheduled for today")
                 return
@@ -141,7 +206,7 @@ class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
                     mic.say(eventTitle + " at " + startHour + ":" + startMinute + " " + appendingTime) # This will be mic.say
 
                 except KeyError as e:
-                    mic.say("Check Calender that you added it correctly")
+                    mic.say("Check Calendar that you added it correctly")
                 
             page_token = events.get('nextPageToken')
 
@@ -154,7 +219,8 @@ class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
         # Time Delta function for adding one day 
         
         one_day = datetime.timedelta(days=1)
-        tz = getTimezone(profile.get_profile())
+        tz = app_utils.get_timezone(profile.get_profile())
+        #service = build('calendar', 'v3', credentials=creds)
         
         # Gets tomorrows Start and End Time in RFC3339 Format
 
@@ -169,9 +235,9 @@ class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
 
         while True:
 
-            # Gets events from primary calender from each page in tomorrow day boundaries
+            # Gets events from primary calendar from each page in tomorrow day boundaries
 
-            events = service.events().list(calendarId='primary', pageToken=page_token, timeMin=tomorrowStartTime, timeMax=tomorrowEndTime).execute()
+            events = self.service.events().list(calendarId='primary', pageToken=page_token, timeMin=tomorrowStartTime, timeMax=tomorrowEndTime).execute()
             if(len(events['items']) == 0):
                 mic.say("You have no events scheduled Tomorrow")
                 return
@@ -197,7 +263,7 @@ class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
                     mic.say(eventTitle + " at " + startHour + ":" + startMinute + " " + appendingTime) # This will be mic.say
 
                 except KeyError as e:
-                    mic.say("Check Calender that you added it correctly")
+                    mic.say("Check Calendar that you added it correctly")
                 
             page_token = events.get('nextPageToken')
             
@@ -205,62 +271,17 @@ class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
                 return
 
 
-
-
-    # Create a flow object. This object holds the client_id, client_secret, and
-    # scope. It assists with OAuth 2.0 steps to get user authorization and
-    # credentials.
-
-    flow = OAuth2WebServerFlow(client_id, client_secret, scope)
-
-
-    # Create a Storage object. This object holds the credentials that your
-    # application needs to authorize access to the user's data. The name of the
-    # credentials file is provided. If the file does not exist, it is
-    # created. This object can only hold credentials for a single user, so
-    # as-written, this script can only handle a single user.
-    storage = Storage('credentials.dat')
-
-    # The get() function returns the credentials for the Storage object. If no
-    # credentials were found, None is returned.
-    credentials = storage.get()
-
-    # If no credentials are found or the credentials are invalid due to
-    # expiration, new credentials need to be obtained from the authorization
-    # server. The oauth2client.tools.run_flow() function attempts to open an
-    # authorization server page in your default web browser. The server
-    # asks the user to grant your application access to the user's data.
-    # If the user grants access, the run_flow() function returns new credentials.
-    # The new credentials are also stored in the supplied Storage object,
-    # which updates the credentials.dat file.
-    if credentials is None or credentials.invalid:
-        credentials = run_flow(flow, storage)
-
-    # Create an httplib2.Http object to handle our HTTP requests, and authorize it
-    # using the credentials.authorize() function.
-    http = httplib2.Http()
-
-    http = credentials.authorize(http)
-
-    # The apiclient.discovery.build() function returns an instance of an API service
-    # object can be used to make API calls. The object is constructed with
-    # methods specific to the calendar API. The arguments provided are:
-    #   name of the API ('calendar')
-    #   version of the API you are using ('v3')
-    #   authorized httplib2.Http() object that can be used for API calls
-    service = build('calendar', 'v3', http=http)
-
     def handle(self, text, mic):
             
         if bool(re.search('Add', text, re.IGNORECASE)):
-            addEvent(mic)
+            self.addEvent(mic)
 
         if bool(re.search('Today', text, re.IGNORECASE)):
-            getEventsToday(mic)
+            self.getEventsToday(mic)
 
         if bool(re.search('Tomorrow', text, re.IGNORECASE)):
-            getEventsTomorrow(mic)
+            self.getEventsTomorrow(mic)
 
 
-    def isValid(self, text):
-        return bool(re.search(r'\bCalendar\b', text, re.IGNORECASE))
+    def is_valid(self, text):
+        return any(p.upper() in text.upper() for p in [self.gettext("CALENDAR")])
