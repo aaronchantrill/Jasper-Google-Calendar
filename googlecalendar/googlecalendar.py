@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 import datetime
-import httplib2
 import logging
 import os
 import pickle
 import re
-import sys
 
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -18,32 +16,32 @@ from naomi import profile
 
 class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
 
-    monthDict = {'January': '01', 
-            'February': '02', 
-            'March': '03', 
-            'April': '04', 
-            'May': '05', 
-            'June': '06', 
-            'July': '07', 
-            'August': '08', 
-            'September': '09', 
-            'October': '10', 
-            'November': '11', 
-            'December': '12'}
-
+    monthDict = {
+        'January': '01',
+        'February': '02',
+        'March': '03',
+        'April': '04',
+        'May': '05',
+        'June': '06',
+        'July': '07',
+        'August': '08',
+        'September': '09',
+        'October': '10',
+        'November': '11',
+        'December': '12'
+    }
 
     # The scope URL for read/write access to a user's calendar data
     scope = 'https://www.googleapis.com/auth/calendar.events'
     creds = None
     service = None
 
-
     def __init__(self, *args, **kwargs):
         super(GoogleCalendarPlugin, self).__init__(*args, **kwargs)
         self._logger = logging.getLogger(__name__)
         # The picklefile is created when the user first authenticates.
-        picklefile = os.path.join(paths.CONFIG_PATH,"token.pickle")
-        secretsfile = os.path.join(paths.CONFIG_PATH,"credentials.json")
+        picklefile = os.path.join(paths.CONFIG_PATH, "token.pickle")
+        secretsfile = os.path.join(paths.CONFIG_PATH, "credentials.json")
         if os.path.exists(picklefile):
             with open(picklefile, 'rb') as token:
                 self.creds = pickle.load(token)
@@ -57,7 +55,7 @@ class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
                     self.scope
                 )
                 self.creds = flow.run_local_server()
-            with open(picklefile,'wb')as token:
+            with open(picklefile, 'wb')as token:
                 pickle.dump(self.creds, token)
         self.service = build('calendar', 'v3', credentials=self.creds)
 
@@ -72,7 +70,6 @@ class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
         ]
 
     def addEvent(self, mic):
-        #service = build('calendar', 'v3', credentials=creds)
         while True:
             try:
                 mic.say(self.gettext("What would you like to add?"))
@@ -82,7 +79,7 @@ class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
                     text=eventData
                 ).execute()
                 eventRawStartTime = createdEvent['start']
-                
+
                 m = re.search(
                     "".join([
                         '([0-9]{4})-([0-9]{2})-([0-9]{2})',
@@ -94,7 +91,7 @@ class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
                 eventDateMonth = str(m.group(2))
                 eventDateDay = str(m.group(3))
                 eventTimeHour = str(m.group(4))
-                eventTimeMinute =  str(m.group(5))
+                eventTimeMinute = str(m.group(5))
                 appendingTime = "am"
 
                 if len(eventTimeMinute) == 1:
@@ -102,13 +99,13 @@ class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
 
                 eventTimeHour = int(eventTimeHour)
 
-                if ((eventTimeHour - 12) > 0 ):
-                        eventTimeHour = eventTimeHour - 12
-                        appendingTime = "pm"
-            
+                if ((eventTimeHour - 12) > 0):
+                    eventTimeHour = eventTimeHour - 12
+                    appendingTime = "pm"
+
                 dictKeys = [
                     key for key, val in self.monthDict.items()
-                    if val==eventDateMonth
+                    if val == eventDateMonth
                 ]
                 eventDateMonth = dictKeys[0]
                 mic.say(" ".join([
@@ -117,20 +114,23 @@ class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
                     self.gettext("on"),
                     str(eventDateMonth),
                     str(eventDateDay),
+                    str(eventDateYear),
                     self.gettext("at"),
                     str(eventTimeHour) + ":" + str(eventTimeMinute),
                     appendingTime
                 ]))
-                
+
                 responded = False
-                while responded == False:
-                    mic.say("Is this what you wanted?")
+                while not responded:
+                    mic.say(self.gettext("Is this what you wanted?"))
                     # convert the userresponse into a string
                     userResponse = mic.active_listen()
                     if type(userResponse) is list:
                         userResponse = " ".join(userResponse)
                     if app_utils.is_positive(userResponse):
-                        mic.say("Okay, I added it to your calendar")
+                        mic.say(
+                            self.gettext("Okay, I added it to your calendar")
+                        )
                         return
                     if app_utils.is_negative(userResponse):
                         responded = True
@@ -141,7 +141,10 @@ class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
 
             except KeyError:
 
-                mic.say(self.gettext("Could not add event to your calendar; check if internet issue."))
+                mic.say(" ".join([
+                    self.gettext("Could not add event to your calendar;"),
+                    self.gettext("check if internet issue.")
+                ]))
                 responded = False
                 while not responded:
                     mic.say(self.gettext("Would you like to attempt again?"))
@@ -155,20 +158,20 @@ class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
     def getEventsToday(self, mic):
 
         tz = app_utils.get_timezone(profile.get_profile())
-        #service = build('calendar', 'v3', credentials=creds)
 
         # Get Present Start Time and End Time in RFC3339 Format
         d = datetime.datetime.now(tz=tz)
-        utcString = d.isoformat()	
-        m = re.search('((\+|\-)[0-9]{2}\:[0-9]{2})', str(utcString))
+        utcString = d.isoformat()
+        m = re.search(r'((\+|\-)[0-9]{2}\:[0-9]{2})', str(utcString))
         utcString = str(m.group(0))
         todayStartTime = str(d.strftime("%Y-%m-%d")) + "T00:00:00" + utcString
         todayEndTime = str(d.strftime("%Y-%m-%d")) + "T23:59:59" + utcString
         page_token = None
-        
+
         while True:
 
-            # Gets events from primary calendar from each page in present day boundaries
+            # Gets events from primary calendar from each page
+            # in present day boundaries
             events = self.service.events().list(
                 calendarId='primary',
                 timeMin=todayStartTime,
@@ -176,10 +179,6 @@ class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
                 singleEvents=True,
                 orderBy='startTime'
             ).execute()
-
-            #events_result = service.events().list(calendarId='primary', timeMin=now,
-            #    maxResults=10, singleEvents=True,
-            #    orderBy='startTime').execute()
 
             if(len(events['items']) == 0):
                 mic.say("You have no events scheduled for today")
@@ -197,53 +196,66 @@ class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
                     startHour = int(startHour)
                     appendingTime = "am"
 
-                    if ((startHour - 12) > 0 ):
+                    if((startHour - 12) > 0):
                         startHour = startHour - 12
                         appendingTime = "pm"
 
                     startMinute = str(startMinute)
                     startHour = str(startHour)
-                    mic.say(eventTitle + " at " + startHour + ":" + startMinute + " " + appendingTime) # This will be mic.say
+                    mic.say(" ".join([
+                        eventTitle,
+                        self.gettext("at"),
+                        startHour + ":" + startMinute,
+                        appendingTime
+                    ]))
 
-                except KeyError as e:
-                    mic.say("Check Calendar that you added it correctly")
-                
+                except KeyError:
+                    mic.say(self.gettext(
+                        "Check Calendar that you added it correctly"
+                    ))
+
             page_token = events.get('nextPageToken')
 
             if not page_token:
                 return
 
-
     def getEventsTomorrow(self, mic):
 
-        # Time Delta function for adding one day 
-        
+        # Time Delta function for adding one day
+
         one_day = datetime.timedelta(days=1)
         tz = app_utils.get_timezone(profile.get_profile())
-        #service = build('calendar', 'v3', credentials=creds)
-        
-        # Gets tomorrows Start and End Time in RFC3339 Format
 
+        # Gets tomorrows Start and End Time in RFC3339 Format
         d = datetime.datetime.now(tz=tz) + one_day
         utcString = d.isoformat()
-        m = re.search('((\+|\-)[0-9]{2}\:[0-9]{2})', str(utcString))
+        m = re.search(r'((\+|\-)[0-9]{2}\:[0-9]{2})', str(utcString))
         utcString = m.group(0)
-        tomorrowStartTime = str(d.strftime("%Y-%m-%d")) + "T00:00:00" + utcString
+        tomorrowStartTime = "".join([
+            str(d.strftime("%Y-%m-%d")),
+            "T00:00:00",
+            utcString
+        ])
         tomorrowEndTime = str(d.strftime("%Y-%m-%d")) + "T23:59:59" + utcString
 
         page_token = None
 
         while True:
 
-            # Gets events from primary calendar from each page in tomorrow day boundaries
-
-            events = self.service.events().list(calendarId='primary', pageToken=page_token, timeMin=tomorrowStartTime, timeMax=tomorrowEndTime).execute()
+            # Gets events from primary calendar from each page
+            # in tomorrow day boundaries
+            events = self.service.events().list(
+                calendarId='primary',
+                pageToken=page_token,
+                timeMin=tomorrowStartTime,
+                timeMax=tomorrowEndTime
+            ).execute()
             if(len(events['items']) == 0):
-                mic.say("You have no events scheduled Tomorrow")
+                mic.say(self.gettext("You have no events scheduled Tomorrow"))
                 return
-        
+
             for event in events['items']:
-                
+
                 try:
                     eventTitle = event['summary']
                     eventTitle = str(eventTitle)
@@ -252,27 +264,31 @@ class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
                     temp = eventRawStartTime[1]
                     startHour, startMinute, temp = temp.split(":", 2)
                     startHour = int(startHour)
-                    appendingTime = "am"
+                    appendingTime = self.gettext("am")
 
-                    if ((startHour - 12) > 0 ):
+                    if((startHour - 12) > 0):
                         startHour = startHour - 12
-                        appendingTime = "pm"
+                        appendingTime = self.gettext("pm")
 
                     startMinute = str(startMinute)
                     startHour = str(startHour)
-                    mic.say(eventTitle + " at " + startHour + ":" + startMinute + " " + appendingTime) # This will be mic.say
+                    mic.say(" ".join([
+                        eventTitle,
+                        "at",
+                        startHour + ":" + startMinute,
+                        appendingTime
+                    ]))
 
-                except KeyError as e:
+                except KeyError:
                     mic.say("Check Calendar that you added it correctly")
-                
+
             page_token = events.get('nextPageToken')
-            
+
             if not page_token:
                 return
 
-
     def handle(self, text, mic):
-            
+
         if bool(re.search('Add', text, re.IGNORECASE)):
             self.addEvent(mic)
 
@@ -282,6 +298,7 @@ class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
         if bool(re.search('Tomorrow', text, re.IGNORECASE)):
             self.getEventsTomorrow(mic)
 
-
     def is_valid(self, text):
-        return any(p.upper() in text.upper() for p in [self.gettext("CALENDAR")])
+        return any(p.upper() in text.upper() for p in [
+            self.gettext("CALENDAR")
+        ])
