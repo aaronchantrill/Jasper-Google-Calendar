@@ -3,20 +3,21 @@ Naomi-Google-Calendar
 
 Naomi Google Calendar Module
 
-Written By: Marc Poul Joseph Laventure
-
 ## Steps to install Google Calendar
 
 * Install/run the following in your home directory
 ```
-pip3 install httplib2
 pip3 install --upgrade google-api-python-client
 pip3 install --upgrade python-gflags
 ```
-* run the following commands in order:
+* Grab a copy of the git repository:
 ```
-cd ~/Naomi/plugins/speechhandler
-git clone https://github.com/aaronchantrill/Jasper-Google-Calendar.git
+git clone https://github.com/aaronchantrill/Naomi-Google-Calendar.git
+cd Naomi-Google-Calendar
+```
+* Copy the googlecalendar directory to Naomi's speechhandler directory
+```
+cp -Riv googlecalendar ~/Naomi/plugins/speechhandler
 ```
 * Login to [Google developer Console](https://console.developers.google.com/project) and complete the following
 * Create a project and select it from the dropdown menu.
@@ -55,7 +56,8 @@ I imagine there is both a way around having to have a desktop environment and GU
 but I haven't found them yet. There seem to be infinite options available.
 
 ## Contributions from the following awesome debuggers/developers :)
-```
-@dansinclair25
-@swcraig
-```
+This plugin is based on Jasper Google Calendar by Marc Poul Joseph Laventure
+
+Additional Contributors
+* @dansinclair25
+* @swcraig
