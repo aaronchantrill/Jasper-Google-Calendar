@@ -1,7 +1,7 @@
 Naomi-Google-Calendar
 ======================
 
-Naomi Google Calendar Module
+Naomi Google Calendar Plugin
 
 ## Steps to install Google Calendar
 
