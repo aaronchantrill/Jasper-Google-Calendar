@@ -1,0 +1,68 @@
+# #-#-#-#-#  en-US.po (Naomi 2.2-dev)  #-#-#-#-#
+# Naomi Google Calendar Plugin
+# This file is distributed under the same license as the Naomi program.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Naomi 2.2-dev\n"
+"Report-Msgid-Bugs-To: https://github.com/naomiproject/naomi-client/issues\n"
+"POT-Creation-Date: 2019-03-29 02:40+GMT\n"
+"PO-Revision-Date: 2019-03-29\n"
+"Last-Translator: AARON CHANTRILL <aaron.chantrill@dottywood.org>\n"
+"Language: en-US\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: pygettext.py 1.5\n"
+
+
+#: googlecalendar.py:66 googlecalendar.py:287
+msgid "CALENDAR"
+msgstr ""
+
+#: googlecalendar.py:67
+msgid "EVENTS"
+msgstr ""
+
+#: googlecalendar.py:68
+msgid "CHECK"
+msgstr ""
+
+#: googlecalendar.py:69
+msgid "ADD"
+msgstr ""
+
+#: googlecalendar.py:70
+msgid "TODAY"
+msgstr ""
+
+#: googlecalendar.py:71
+msgid "TOMORROW"
+msgstr ""
+
+#: googlecalendar.py:78
+msgid "What would you like to add?"
+msgstr ""
+
+#: googlecalendar.py:115
+msgid "Added event"
+msgstr ""
+
+#: googlecalendar.py:117
+msgid "on"
+msgstr ""
+
+#: googlecalendar.py:120
+msgid "at"
+msgstr ""
+
+#: googlecalendar.py:144
+msgid "Could not add event to your calendar; check if internet issue."
+msgstr ""
+
+#: googlecalendar.py:147
+msgid "Would you like to attempt again?"
+msgstr ""
+

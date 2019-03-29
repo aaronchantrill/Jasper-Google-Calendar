@@ -25,7 +25,7 @@ git clone https://github.com/aaronchantrill/Jasper-Google-Calendar.git
 * In the sidebar on the left, select Credentials.
 * Click the "Create Credentials" button and select "OAuth client ID."
 * Select "other" as application type.
-* After creating the credentials, use the "Download JSON" button (looks like a downward pointing arrow) to download your json file. Save it in the ~/naomi directory as credentials.json. 
+* After creating the credentials, use the "Download JSON" button (looks like a downward pointing arrow) to download your json file. Save it in the ~/naomi directory (the same directory with profile.yml) as credentials.json. 
 * Tell Naomi to shut down or open the console where Naomi is running and press CTRL-C to kill the process.
 * Restart Naomi from Terminal on the Pi (i.e. don't SSH in)
 ```
