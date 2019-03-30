@@ -10,14 +10,10 @@ Naomi Google Calendar Plugin
 pip3 install --upgrade google-api-python-client
 pip3 install --upgrade python-gflags
 ```
-* Grab a copy of the git repository:
+* cd to the speechhandler plugins directory and grab a copy of the git repository:
 ```
+cd ~/Naomi/plugins/speechhandler
 git clone https://github.com/aaronchantrill/Naomi-Google-Calendar.git
-cd Naomi-Google-Calendar
-```
-* Copy the googlecalendar directory to Naomi's speechhandler directory
-```
-cp -Riv googlecalendar ~/Naomi/plugins/speechhandler
 ```
 * Login to [Google developer Console](https://console.developers.google.com/project) and complete the following
 * Create a project and select it from the dropdown menu.
