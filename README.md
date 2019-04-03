@@ -8,6 +8,7 @@ Naomi Google Calendar Plugin
 * Install/run the following in your home directory
 ```
 pip3 install --upgrade google-api-python-client
+pip3 install --upgrade oauth2client
 pip3 install --upgrade google-auth-oauthlib
 pip3 install --upgrade python-gflags
 ```
