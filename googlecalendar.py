@@ -4,7 +4,7 @@ import logging
 import os
 import pickle
 import re
-
+from collections import OrderedDict
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
@@ -39,9 +39,10 @@ class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
     def __init__(self, *args, **kwargs):
         super(GoogleCalendarPlugin, self).__init__(*args, **kwargs)
         self._logger = logging.getLogger(__name__)
+        secretsfile = profile.get(["google", "calendar_credentials_json"])
+        credentials_path = os.path.dirname(secretsfile)
         # The picklefile is created when the user first authenticates.
-        picklefile = os.path.join(paths.CONFIG_PATH, "token.pickle")
-        secretsfile = os.path.join(paths.CONFIG_PATH, "credentials.json")
+        picklefile = os.path.join(credentials_path, "token.pickle")
         if os.path.exists(picklefile):
             with open(picklefile, 'rb') as token:
                 self.creds = pickle.load(token)
@@ -302,3 +303,47 @@ class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
         return any(p.upper() in text.upper() for p in [
             self.gettext("CALENDAR")
         ])
+
+    def settings(self):
+        _ = self.gettext
+        return OrderedDict(
+            [
+                (
+                    ("google", "calendar_credentials_json"), {
+                        "type": "file",
+                        "title": _("Google calendar credentials (*.json)"),
+                        "description": _("This is a json file that allows me to use the Google Calendar API. You need to generate and download a Google Calendar API key. See the README.md file for more information."),
+                        "validation": lambda filename: os.path.exists(os.path.expanduser(filename)),
+                        "invalidmsg": lambda filename: _("File {} does not exist".format(os.path.expanduser(filename))),
+                        "default": os.path.join(paths.CONFIG_PATH, "credentials.json")
+                    }
+                )
+            ]
+        )
+
+    def intents(self):
+        _ = self.gettext
+        return {
+            'CalendarIntent': {
+                'keywords': {
+                    'WhenKeyword': [
+                        'TODAY',
+                        'TOMORROW',
+                        'SUNDAY',
+                        'MONDAY',
+                        'TUESDAY',
+                        'WEDNESDAY',
+                        'THURSDAY',
+                        'FRIDAY',
+                        'SATURDAY'
+                    ]
+                },
+                'templates': [
+                    _("ADD CALENDAR EVENT"),
+                    _("ADD AN EVENT TO MY CALENDAR"),
+                    _("DO I HAVE ANY CALENDAR EVENTS {WhenKeyword}"),
+                    _("WHAT'S ON MY CALENDAR {WhenKeyword}")
+                ],
+                'action': self.handle
+            }
+        }
