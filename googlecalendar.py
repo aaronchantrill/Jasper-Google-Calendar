@@ -288,8 +288,8 @@ class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
             if not page_token:
                 return
 
-    def handle(self, text, mic):
-
+    def handle(self, intent, mic):
+        text = intent['input']
         if bool(re.search('Add', text, re.IGNORECASE)):
             self.addEvent(mic)
 
@@ -322,28 +322,52 @@ class GoogleCalendarPlugin(plugin.SpeechHandlerPlugin):
         )
 
     def intents(self):
-        _ = self.gettext
         return {
             'CalendarIntent': {
-                'keywords': {
-                    'WhenKeyword': [
-                        'TODAY',
-                        'TOMORROW',
-                        'SUNDAY',
-                        'MONDAY',
-                        'TUESDAY',
-                        'WEDNESDAY',
-                        'THURSDAY',
-                        'FRIDAY',
-                        'SATURDAY'
-                    ]
+                'locale': {
+                    'en-US': {
+                        'keywords': {
+                            'WhenKeyword': [
+                                'TODAY',
+                                'TOMORROW',
+                                'SUNDAY',
+                                'MONDAY',
+                                'TUESDAY',
+                                'WEDNESDAY',
+                                'THURSDAY',
+                                'FRIDAY',
+                                'SATURDAY'
+                            ]
+                        },
+                        'templates': [
+                            "ADD CALENDAR EVENT",
+                            "ADD AN EVENT TO MY CALENDAR",
+                            "DO I HAVE ANY CALENDAR EVENTS {WhenKeyword}",
+                            "WHAT'S ON MY CALENDAR {WhenKeyword}"
+                        ]
+                    },
+                    'fr-FR': {
+                        'keywords': {
+                            'WhenKeyword': [
+                                "AUJOURD'HUI",
+                                "DEMAIN",
+                                "DIMANCHE",
+                                "LUNDI",
+                                "MARDI",
+                                "MERCREDI",
+                                "JEUDI",
+                                "VENDREDI",
+                                "SAMEDI"
+                            ]
+                        },
+                        'templates': [
+                            "AJOUTER UN ÉVÉNEMENT CALENDRIER",
+                            "AJOUTER UN ÉVÉNEMENT À MON CALENDRIER",
+                            "AI-JE DES ÉVÉNEMENTS CALENDRIERS {WhenKeyword}",
+                            "CE QUI EST SUR MON CALENDRIER {WhenKeyword}"
+                        ]
+                    }
                 },
-                'templates': [
-                    _("ADD CALENDAR EVENT"),
-                    _("ADD AN EVENT TO MY CALENDAR"),
-                    _("DO I HAVE ANY CALENDAR EVENTS {WhenKeyword}"),
-                    _("WHAT'S ON MY CALENDAR {WhenKeyword}")
-                ],
                 'action': self.handle
             }
         }
