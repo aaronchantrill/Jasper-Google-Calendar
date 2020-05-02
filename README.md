@@ -1,5 +1,22 @@
-Naomi-Google-Calendar
-======================
+---
+id: googlecalendar
+label: GoogleCalender
+title: GoogleCalender - Speechhandler
+type: speechhandlers
+description: "Set and retrieve events from your Google calendar"
+logo: images/plugins/gcal.png
+source: https://github.com/aaronchantrill/Naomi-Google-Calendar/edit/master/README.md
+meta:
+  - property: og:title
+    content: "GoogleCalender - Speechhandler"
+  - property: og:description
+    content: "Set and retrieve events from your Google calendar"
+---
+
+
+# GoogleCalender - Speechhandler
+
+<PluginLogo/>
 
 Naomi Google Calendar Plugin
 
@@ -59,3 +76,5 @@ This plugin is based on Jasper Google Calendar by Marc Poul Joseph Laventure
 Additional Contributors
 * @dansinclair25
 * @swcraig
+
+<EditPageLink/>
